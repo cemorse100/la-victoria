@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Victoria — Bar · Cafetería</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;1,500;1,600&family=Pinyon+Script&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f6f3e5;
+    --red:#ad1932;      /* wordmark + buttons */
+    --red-deep:#8c0e1f; /* BAR / CAFETERÍA / hours / address */
+    --page-pad: clamp(20px, 5vw, 64px);
+
+    /* ----- swan pattern: ONE overlapping row, alternating 0°/180°.
+       rendered pattern used directly as a seamless tile (swan_pattern.png,
+       1338x404, one full repeat). ----- */
+    --swan-strip: clamp(80px, 9.98vw, 125px);    /* strip height (-5%) */
+
+    /* ----- egg pattern: ONE overlapping row, alternating 0°/180°.
+       box 138.671 x 173.375; advances 57.53 (0.4149) then 92.96 (0.6703). */
+    --egg-w: clamp(77px, 10vw, 120px);
+    /* The egg PNG's true aspect is 1.2503, but its art carries far more
+       transparent margin than the swan tile (≈25/20px vs 7/9px at a 200px
+       height), which made the bottom of the page look more padded than the top.
+       We shorten the egg BAND to this ratio and let object-fit:cover crop the
+       excess whitespace, so the egg (bottom) and swan (top) figures end up the
+       same distance from the screen edges. */
+    --egg-ratio: 0.965;                           /* cropped band height (h / w) */
+    --egg-h: calc(var(--egg-w) * var(--egg-ratio));
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html,body{ height:100%; }
+
+  /* The whole page is one vertical auto-layout (matches the Figma frame):
+     the two scrolling strips are the first & last children, and space-between
+     pins them to the top and bottom while the content distributes evenly in
+     between — so the strips stay on screen at any viewport height. */
+  body{
+    background:var(--cream);
+    color:var(--red-deep);
+    font-family:'Montserrat', system-ui, sans-serif;
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;   /* strips pinned top & bottom, content spread between */
+    align-items:center;              /* content centered; strips are full-bleed (width:100%) */
+    padding:16px 0;                  /* the frame's 16px top/bottom padding */
+    overflow-x:hidden;
+  }
+
+  /* ---------- Infinite marquee strips ----------
+     ONE row. Consecutive images alternate 0°/180° and overlap
+     horizontally via alternating negative margins, at the exact
+     advances from the Figma pattern frames -> one interlocking band. */
+  .strip{
+    width:100%;
+    position:relative;
+    overflow:hidden;
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+  }
+  .strip--swans{ height:var(--swan-strip); }
+  .strip--eggs{ height:var(--egg-h); opacity:.9; }
+
+  .strip__track{ display:flex; width:max-content; will-change:transform; }
+  .strip__track img{ display:block; flex:0 0 auto; pointer-events:none; user-select:none; }
+
+  /* swans: the exported pattern tile, repeated edge-to-edge (seamless) */
+  .strip--swans .strip__track img{ height:var(--swan-strip); width:auto; }
+
+  /* eggs (box 138.67): X = 0, 64.97, 142.77, 206.73 -> advance 0.4685 box
+     after each 0° egg, 0.5610 box after each 180° egg */
+  .strip--eggs .strip__track img{ width:var(--egg-w); height:var(--egg-h);
+                                  object-fit:cover; object-position:center; }
+  .strip--eggs .strip__track img:nth-child(odd){  margin-right:calc(var(--egg-w) * -0.531477); }
+  .strip--eggs .strip__track img:nth-child(even){ margin-right:calc(var(--egg-w) * -0.438955);
+                                                  transform:rotate(180deg); }
+
+  .track--rtl{ animation:scroll-rtl 60s linear infinite; }
+  .track--ltr{ animation:scroll-ltr 66s linear infinite; }
+
+  @keyframes scroll-rtl{
+    from{ transform:translateX(0); }
+    to{ transform:translateX(-50%); }
+  }
+  @keyframes scroll-ltr{
+    from{ transform:translateX(-50%); }
+    to{ transform:translateX(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .track--rtl,.track--ltr{ animation:none; }
+  }
+
+  /* ---------- Content blocks (siblings of the strips) ----------
+     Each block is full width with a centered, max-width inner column and its
+     own side padding, so the strips can stay full-bleed while text stays inset. */
+  .headline,
+  .info{
+    width:100%;
+    max-width:1280px;
+    margin-inline:auto;
+    padding-inline:var(--page-pad);
+  }
+  .headline{
+    display:flex;
+    flex-direction:column;
+    gap:clamp(4px,1vw,16px);   /* eyebrow → wordmark */
+  }
+
+  .eyebrow{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-weight:500;
+    letter-spacing:-0.02em;
+    color:var(--red-deep);
+  }
+  .eyebrow .bar{ font-size:clamp(15px,2.2vw,31px); }
+  .eyebrow .cafe{ font-size:clamp(18px,2.8vw,40px); letter-spacing:.04em; }
+
+  @font-face{
+    font-family:'Kuenstler Script';
+    src:url('la-victoria_assets/Kuenstler%20Script%20LT%20Std%202%20Bold.otf') format('opentype');
+    font-weight:normal;
+    font-style:normal;
+    font-display:swap;
+  }
+
+  .wordmark{
+    font-family:'Kuenstler Script', 'Pinyon Script', cursive;
+    color:var(--red);
+    text-align:center;
+    line-height:.9;
+    font-size:clamp(56px, 20vw, 300px);
+    font-weight:400;
+    white-space:nowrap;
+  }
+
+  .info{
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    align-items:center;
+    gap:clamp(16px,3vw,40px);
+    font-weight:500;
+    letter-spacing:-0.02em;
+    font-size:clamp(14px,1.7vw,24px);
+    line-height:1.5;
+    color:var(--red-deep);
+  }
+  .info .addr{
+    justify-self:center;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    gap:.3em;
+  }
+  .info .comer{ justify-self:start; }
+  .info .beber{ justify-self:end; }
+
+  /* DE COMER / DE BEBER — outlined pill buttons (Figma) */
+  .menu-link{
+    background:none;
+    border:2px solid var(--red);
+    border-radius:999px;
+    padding:clamp(9px,1.15vw,16px) clamp(20px,2.2vw,32px);
+    font:inherit;
+    font-style:italic;
+    color:var(--red);
+    cursor:pointer;
+    letter-spacing:-0.02em;
+    white-space:nowrap;
+    transition:background .18s ease, color .18s ease;
+  }
+  .menu-link:hover{ background:var(--red); color:var(--cream); }
+  .menu-link:focus-visible{ outline:2px solid var(--red); outline-offset:4px; }
+
+  /* ---------- Menu overlay ---------- */
+  .overlay{
+    position:fixed;
+    inset:0;
+    z-index:100;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:clamp(16px,4vw,56px);
+    background:rgba(35,6,10,0);
+    visibility:hidden;
+    transition:background 1s cubic-bezier(.22,.61,.36,1),
+               visibility 0s linear 1s;
+  }
+  .overlay.open{
+    visibility:visible;
+    background:rgba(35,6,10,.72);
+    transition:background 1s cubic-bezier(.22,.61,.36,1),
+               visibility 0s;
+  }
+
+  .overlay__close{
+    position:fixed;
+    top:clamp(14px,2.5vw,28px);
+    right:clamp(14px,2.5vw,28px);
+    width:clamp(42px,5vw,54px);
+    height:clamp(42px,5vw,54px);
+    border-radius:50%;
+    border:1.5px solid rgba(173,25,50,.45);
+    background:rgba(173,25,50,.06);
+    color:var(--red);
+    font-size:clamp(20px,2.6vw,26px);
+    line-height:1;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    opacity:0;
+    transform:scale(.9);
+    pointer-events:none;
+    transition:opacity .45s ease .25s, transform .45s ease .25s, background .18s ease, border-color .18s ease;
+    z-index:101;
+  }
+  .overlay__close:hover{ background:rgba(173,25,50,.14); border-color:var(--red); }
+  .overlay__close:focus-visible{ outline:2px solid var(--red); outline-offset:3px; }
+  .overlay.open .overlay__close{ opacity:1; transform:scale(1); pointer-events:auto; }
+
+  /* menu card (the "image" that rises up) */
+  .menu-card{
+    position:relative;
+    display:flex;
+    width:min(560px, 100%);
+    max-height:100%;
+    overflow:hidden;                 /* card clips; inner element scrolls */
+    background:var(--cream);
+    color:var(--red);
+    border-radius:6px;
+    box-shadow:0 40px 90px -30px rgba(0,0,0,.6);
+    transform:translateY(120vh);
+    transition:transform 1s cubic-bezier(.22,.61,.36,1);
+  }
+  .overlay.open .menu-card{ transform:translateY(0); }
+
+  .menu-scroll{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    padding:clamp(28px,5vw,56px) clamp(22px,5vw,54px);
+    text-align:center;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;            /* hide native scrollbar (Firefox) */
+  }
+  .menu-scroll::-webkit-scrollbar{ display:none; } /* hide native (WebKit) */
+
+  /* minimal red scrollbar on the left — signals the menu is scrollable */
+  .menu-scrollbar{
+    position:absolute;
+    right:clamp(8px,1.5vw,15px);
+    top:clamp(20px,4vw,38px);
+    bottom:clamp(20px,4vw,38px);
+    width:1.5px;
+    background:rgba(173,25,50,.22);  /* hairline track (light red) */
+    border-radius:2px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .5s ease .35s;
+    z-index:2;
+  }
+  .overlay.open .menu-scrollbar{ opacity:1; }
+  .menu-scrollbar.is-hidden{ opacity:0; }         /* no overflow = no bar */
+
+  .menu-scrollbar__thumb{
+    position:absolute;
+    left:50%;
+    top:0;
+    width:5px;
+    min-height:34px;
+    border-radius:999px;
+    background:var(--red);
+    transform:translateX(-50%);
+  }
+
+  .menu-card__head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-family:'Montserrat';
+    font-weight:500;
+    letter-spacing:.08em;
+    color:var(--red-deep);
+    font-size:clamp(12px,2.6vw,15px);
+  }
+  .menu-card__wordmark{
+    font-family:'Kuenstler Script', 'Pinyon Script', cursive;
+    font-size:clamp(64px,15vw,104px);
+    line-height:.8;
+    color:var(--red);
+    margin:.05em 0 .35em;
+  }
+  .menu-card__title{
+    font-family:'Montserrat';
+    font-weight:600;
+    letter-spacing:.12em;
+    text-decoration:underline;
+    text-underline-offset:4px;
+    color:var(--red);
+    font-size:clamp(15px,3.4vw,20px);
+    margin-bottom:1.4em;
+  }
+  .menu-group{ margin-bottom:1.7em; }
+  .menu-group:last-child{ margin-bottom:0; }
+  .menu-group li{
+    list-style:none;
+    font-family:'Montserrat';
+    font-weight:500;
+    color:var(--red);
+    font-size:clamp(12.5px,3vw,16px);
+    line-height:1.5;
+    padding:.16em 0;
+    letter-spacing:.01em;
+  }
+  .menu-group li.extra{
+    font-weight:400;
+    text-transform:lowercase;
+    font-size:clamp(11px,2.6vw,14px);
+    opacity:.85;
+  }
+
+  /* ---------- Responsive ----------
+     Font sizes are calibrated to the Figma frame (402px wide) in vw so they hit
+     the comp's exact sizes at 402px and scale from there. Vertical rhythm is now
+     handled by the body's space-between distribution, not per-element margins. */
+  @media (max-width:720px){
+    :root{
+      --page-pad:4vw;                            /* ~16px @402 (comp side margin) */
+      --swan-strip:clamp(120px, 36.8vw, 155px);  /* swan band 148px @402 */
+      --egg-w:clamp(110px, 34.5vw, 150px);       /* egg 138.7 × 173.4 @402 */
+    }
+
+    /* BAR / CAFETERÍA — both 21.7px in the comp */
+    .eyebrow .bar,
+    .eyebrow .cafe{ font-size:clamp(17px, 5.4vw, 24px); }
+
+    /* La Victoria — ~119px, spanning the width (fitWordmark caps it to fit).
+       line-height:1 keeps the script's tall ascenders clear of the eyebrow row. */
+    .wordmark{ font-size:31vw; line-height:1; }
+
+    .headline{ gap:clamp(2px, 0.8vw, 10px); }   /* eyebrow → wordmark (tight, like the comp) */
+
+    /* Address stacked over a single row of two equal-width buttons. Flex-wrap
+       lets the full-width address break first so the buttons share the row below. */
+    .info{
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:center;
+      align-items:center;
+      gap:clamp(28px, 10vw, 64px) 1.5vw; /* address↔buttons · button↔button */
+      font-size:clamp(12px, 3.85vw, 16.8px);/* address, 30% smaller on mobile */
+      line-height:1.5;
+    }
+    .info .addr{ order:1; flex:0 0 100%; gap:0.25em; }  /* lines ~38.7px apart */
+    .info .comer{ order:2; }
+    .info .beber{ order:3; }
+    .info .comer,
+    .info .beber{ flex:1 1 0; }          /* two equal ~180px buttons filling the row */
+
+    .menu-link{ padding:2.3vw 5.6vw; font-size:clamp(15px, 4.2vw, 18px); } /* 17px @402, ~43px tall */
+  }
+</style>
+</head>
+<body>
+
+  <!-- Top swan border: infinite scroll right -> left -->
+  <div class="strip strip--swans" aria-hidden="true">
+    <div class="strip__track track--rtl"></div>
+  </div>
+
+  <!-- Headline: eyebrow + wordmark (one distributed block) -->
+  <div class="headline">
+    <div class="eyebrow">
+      <span class="bar">BAR</span>
+      <span class="cafe">CAFETERÍA</span>
+    </div>
+
+    <h1 class="wordmark">La Victoria</h1>
+  </div>
+
+  <!-- Address + buttons: flanking row on desktop, stacked on mobile -->
+  <div class="info">
+    <button class="menu-link comer" data-menu="comer">DE COMER</button>
+    <div class="addr">
+      <span>MIERCOLES&nbsp;-&nbsp;DOMINGO&nbsp;9-17h</span>
+      <span>C/&nbsp;DELS&nbsp;METGES,&nbsp;12&nbsp;(EL&nbsp;BORN)</span>
+    </div>
+    <button class="menu-link beber" data-menu="beber">DE BEBER</button>
+  </div>
+
+  <!-- Bottom egg border: infinite scroll left -> right -->
+  <div class="strip strip--eggs" aria-hidden="true">
+    <div class="strip__track track--ltr"></div>
+  </div>
+
+  <!-- Menu overlay -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <button class="overlay__close" id="closeBtn" aria-label="Cerrar menú">&times;</button>
+    <div class="menu-card" id="menuCard">
+      <div class="menu-scrollbar" id="menuScrollbar" aria-hidden="true">
+        <span class="menu-scrollbar__thumb" id="menuThumb"></span>
+      </div>
+      <div class="menu-scroll" id="menuScroll"></div>
+    </div>
+  </div>
+
+  <script>
+    /* ---------- Build seamless marquee tracks ----------
+       Measure one item to learn the box width, add enough overlapping
+       items to cover the viewport (even count, so the 0°/180° + margin
+       alternation stays consistent across the loop seam), then duplicate
+       so translateX(-50%) is perfectly seamless. */
+    function fillRow(track, src){
+      track.innerHTML = '<img src="' + src + '" alt="">';
+      const box = track.firstElementChild.getBoundingClientRect().width;
+      const minAdvance = box * 0.37;                 // smallest of the two overlaps
+      let need = Math.ceil((window.innerWidth + box * 4) / minAdvance) + 2;
+      if(need % 2) need++;                            // keep alternation phase across the seam
+      let html = '';
+      for(let i = 0; i < need; i++) html += '<img src="' + src + '" alt="">';
+      track.innerHTML = html + html;
+    }
+
+    /* Swans: a pre-rendered seamless pattern tile, repeated edge-to-edge
+       to cover the viewport, then duplicated for the translateX(-50%) loop. */
+    function fillTileRow(track, src, aspect){
+      const stripH = track.closest('.strip').getBoundingClientRect().height;
+      const tileW = stripH * aspect;               // known from the tile's dimensions
+      const need = Math.ceil((window.innerWidth + tileW * 2) / tileW) + 1;
+      // Set explicit width/height inline so the track is correctly sized the moment
+      // it's built — before the large pattern PNG has loaded. With CSS width:auto,
+      // an unloaded image measures 0, so on a cold (uncached) visit the strip had no
+      // width: it neither scrolled nor filled the screen until a reload cached it.
+      const tile = '<img src="' + src + '" alt="" style="width:' + tileW + 'px;height:' + stripH + 'px">';
+      let html = '';
+      for(let i = 0; i < need; i++) html += tile;
+      track.innerHTML = html + html;
+    }
+
+    function buildStrips(){
+      fillTileRow(document.querySelector('.strip--swans .strip__track'), 'la-victoria_assets/swan_pattern.png', 1338/404);
+      fillRow(document.querySelector('.strip--eggs .strip__track'),  'la-victoria_assets/egg.png');
+    }
+    buildStrips();
+    // Rebuild once all images have loaded, so widths are exact on a cold load and
+    // the marquee animation is (re)created against the final track width.
+    window.addEventListener('load', buildStrips);
+
+    /* Scale the script wordmark down to always fit its container (never upscale) */
+    const wordmark = document.querySelector('.wordmark');
+    function fitWordmark(){
+      wordmark.style.fontSize = '';                 // back to CSS clamp value
+      const parent = wordmark.parentElement;         // .headline (has side padding)
+      const cs = getComputedStyle(parent);
+      const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      const avail = (parent.clientWidth - padX) * 0.98;   // fit to the content box, not incl. padding
+      const range = document.createRange();          // true text bounds, ignores centering/overflow
+      range.selectNodeContents(wordmark);
+      const w = range.getBoundingClientRect().width;
+      if(w > avail){
+        const cur = parseFloat(getComputedStyle(wordmark).fontSize);
+        wordmark.style.fontSize = (cur * avail / w) + 'px';
+      }
+    }
+    fitWordmark();
+    if(document.fonts){
+      // The wordmark is sized to overflow and then scaled down to fit, so the fit
+      // must run against the real Kuenstler face. fonts.ready can resolve before the
+      // swap, so also re-fit when the Kuenstler face specifically finishes loading.
+      document.fonts.ready.then(fitWordmark);
+      document.fonts.load("400 1em 'Kuenstler Script'").then(fitWordmark).catch(() => {});
+    }
+    window.addEventListener('load', fitWordmark);
+
+    let rz;
+    window.addEventListener('resize', () => {
+      clearTimeout(rz);
+      rz = setTimeout(() => {
+        buildStrips(); fitWordmark();
+        if(overlay.classList.contains('open')) updateScrollbar();
+      }, 200);
+    });
+
+    /* ---------- Menu data ---------- */
+    const MENUS = {
+      comer: {
+        title: 'DE COMER',
+        groups: [
+          [ ['CROISSANT','2,80€'],
+            ['PAIN AU CHOCOLAT O BRIOX DE CHOCOLATE','3,50€'],
+            ['SCONES CON MERMELADA Y NATA','4,30€'],
+            ['DATILES RELLENOS CON MANTEQUILLA DE MANÍ & BAÑADOS EN CHOCLATE','3,00€'],
+            ['BUDÍN DE LIMON & AMAPOLAS CON NATA & ACEITE DE OLIVA','4,50€'],
+            ['COOKIES','3,50€'],
+            ['PANCAKES DE ARANDANOS CON FRUTA, YOGURT & MIEL','7,50€'],
+            ['YOGURT, FRUTA DE ESTACIÓN & GRANOLA','8,00€'] ],
+          [ ['BIKINI','5,50€'],
+            ['BRIOCHE DE HUEVO Y PANCETA','8,50€'],
+            ['EL CROISSANT DE LA VICTORIA CON HUEVOS, JAMON IBERICO & SALSA YOGURT','12,50€'] ],
+          [ ['HUEVO REVUELTO, QUESO MANCHEGO, VERDURA DE ESTACIÓN & PAN','11,00€'],
+            ['extra bacon 3,50€ / extra sardina 3,50€ / extra queso 2,50€ / extra avocado 2,50€', null, true],
+            ['HUEVO PASADO POR AGUA CON JAMON, QUESO MANTEQUILLA & PAN DE MASA MADRE','11,00€'],
+            ['extra bacon 3,50€ / extra sardina 3,50€ / extra queso 2,50€ / extra avocado 2,50€', null, true] ],
+          [ ['QUICHE DEL DIA CON ENSALADA','12,00€'],
+            ['WRAP DE POLLO & COLESLAW','9,00€'],
+            ['ESCALOPOE DE POLLO CON HUEVO & ENSALADA VERDE','15,00€'],
+            ['ENSALADA DE TOMATE CON AJO BLANCO','13,00€'] ],
+          [ ['OLIVAS','2,80€'],
+            ['PATATAS CHIPS CON HUEVAS DE TRUCHA','6,20€'],
+            ['GILDAS','3,20€'] ]
+        ]
+      },
+      beber: {
+        title: 'DE BEBER',
+        groups: [
+          [ ['ESPRESSO (DOUBLE SHOT)','2,30€'],
+            ['AMERICANO','2,50€'],
+            ['CORTADO','2,20€'],
+            ['CAFÉ CON LECHE','2,80€'],
+            ['FLAT WHITE','3,20€'],
+            ['CAFÉ DE FILTRO','3,00€'],
+            ['MATCHA LATTE','4,00€'],
+            ['CHAI LATTE','4,00€'],
+            ['BABYCCINO','1,20€'] ],
+          [ ['ICED LATTE','4,00€'],
+            ['ICED AMERICANO','2,90€'],
+            ['ICED MATCHA','4,50€'],
+            ['ICED CHAI','4,50€'] ],
+          [ ['AGUA','2,50€'],
+            ['VICHY','3,00€'],
+            ['SODA DE MANZANA','3,00€'],
+            ['ZUMO DE NARANJA','3,80€'] ],
+          [ ['CAÑITA','2,50€'],
+            ['COPA DE CERVEZA','3,50€'],
+            ['VINO ROSADO','3,80€'],
+            ['VERMUT','2,90€'],
+            ['APEROL SPRITZ','6,50€'],
+            ['ESPRESSO MARTINI','11,00€'],
+            ['GIN TONIC','11,00€'] ]
+        ]
+      }
+    };
+
+    const overlay      = document.getElementById('overlay');
+    const menuScroll   = document.getElementById('menuScroll');
+    const menuScrollbar= document.getElementById('menuScrollbar');
+    const menuThumb    = document.getElementById('menuThumb');
+    const closeBtn     = document.getElementById('closeBtn');
+    let lastFocused = null;
+
+    /* Size + position the custom thumb from the scroller's own metrics.
+       Hides the whole bar when there's nothing to scroll. */
+    function updateScrollbar(){
+      const { scrollHeight, clientHeight, scrollTop } = menuScroll;
+      if(scrollHeight - clientHeight <= 1){
+        menuScrollbar.classList.add('is-hidden');
+        return;
+      }
+      menuScrollbar.classList.remove('is-hidden');
+      const trackH  = menuScrollbar.clientHeight;
+      const thumbH  = Math.max(34, trackH * clientHeight / scrollHeight);
+      const ratio   = scrollTop / (scrollHeight - clientHeight);
+      menuThumb.style.height = thumbH + 'px';
+      menuThumb.style.top    = (trackH - thumbH) * ratio + 'px';
+    }
+    menuScroll.addEventListener('scroll', updateScrollbar, { passive:true });
+
+    function renderMenu(key){
+      const m = MENUS[key];
+      let html = `
+        <div class="menu-card__head"><span>BAR</span><span>CAFETERÍA</span></div>
+        <div class="menu-card__wordmark">La Victoria</div>
+        <div class="menu-card__title">${m.title}.</div>`;
+      for(const group of m.groups){
+        html += '<ul class="menu-group">';
+        for(const item of group){
+          const [name, price, extra] = item;
+          const text = price ? `${name} ${price}` : name;
+          html += `<li class="${extra ? 'extra' : ''}">${text}</li>`;
+        }
+        html += '</ul>';
+      }
+      menuScroll.innerHTML = html;
+      menuScroll.scrollTop = 0;
+    }
+
+    function openMenu(key){
+      lastFocused = document.activeElement;
+      renderMenu(key);
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden','false');
+      document.body.style.overflow = 'hidden';
+      closeBtn.focus({ preventScroll:true });
+      // wait for layout (card at final size) before measuring the scrollbar
+      requestAnimationFrame(updateScrollbar);
+    }
+
+    function closeMenu(){
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden','true');
+      document.body.style.overflow = '';
+      if(lastFocused) lastFocused.focus({ preventScroll:true });
+    }
+
+    document.querySelectorAll('.menu-link').forEach(btn => {
+      btn.addEventListener('click', () => openMenu(btn.dataset.menu));
+    });
+
+    // shareable deep-links: #comer / #beber open the matching menu on load
+    if(MENUS[location.hash.slice(1)]) openMenu(location.hash.slice(1));
+    closeBtn.addEventListener('click', closeMenu);
+    overlay.addEventListener('click', (e) => { if(e.target === overlay) closeMenu(); });
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape' && overlay.classList.contains('open')) closeMenu();
+    });
+  </script>
+</body>
+</html>
