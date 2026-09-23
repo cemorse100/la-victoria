@@ -659,7 +659,10 @@
   .menu-btn{
     position:absolute;
     left:calc(307.18 * var(--u));
-    top:calc(32.91 * var(--u) + env(safe-area-inset-top, 0px));
+    /* Frame 2263:1467 puts this at y=32.91; raised 16 design units by eye.
+       In --u rather than raw px so it keeps its place in the composition at
+       every screen size, like everything else on the artboard. */
+    top:calc(16.91 * var(--u) + env(safe-area-inset-top, 0px));
     z-index:5;
 
     display:flex;
