@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#2d221e">
+<!-- iOS Safari tints its status bar and bottom toolbar with this, and page
+     content cannot be painted under them — so matching it to whatever the
+     layout is showing is what makes the hero read as running to the screen
+     edges. #7b674e is the mean of the hero photo's top 8 rows; JS swaps it
+     to cream for the menu frame and the desktop page (see setTint). -->
+<meta name="theme-color" content="#7b674e">
 <title>La Victoria — Bar · Cafetería</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1360,6 +1365,7 @@ function onBreakpoint(){
     document.body.classList.remove('menu-open');
     layoutSite();
   }
+  clearTimeout(tintTimer); setTint();
 }
 NARROW.addEventListener('change', onBreakpoint);
 
@@ -1598,16 +1604,41 @@ function layoutPhone(){
   measureMorph();
 }
 
+/* ---------- Browser chrome tint ----------
+   iOS Safari paints its status bar and bottom toolbar with theme-color and
+   will not let page content under them, so the hero can only read as
+   full-bleed if that tint continues the image. #7b674e is the mean of the
+   photo's top 8 rows; the menu frame and the desktop page are both cream. */
+const TINT = { photo:'#7b674e', cream:'#f6f3e5' };
+const tintMeta = document.querySelector('meta[name="theme-color"]');
+function setTint(){
+  const onPhoto = NARROW.matches && !document.body.classList.contains('menu-open');
+  tintMeta.setAttribute('content', onPhoto ? TINT.photo : TINT.cream);
+}
+/* Read from the stylesheet so the tint stays in step if --menu-dur changes. */
+function menuDurMs(){
+  const v = getComputedStyle(document.documentElement)
+              .getPropertyValue('--menu-dur').trim();
+  return v.endsWith('ms') ? parseFloat(v) : parseFloat(v) * 1000;
+}
+let tintTimer;
+
 function openPhoneMenu(){
   measureMorph();                    // --u may have changed since the last open
   document.body.classList.add('menu-open');
   phoneMenu.setAttribute('aria-hidden', 'false');
   phoneOpen.setAttribute('aria-expanded', 'true');
+  // cream arrives with the wash, so turn the bars over immediately
+  clearTimeout(tintTimer); setTint();
 }
 function closePhoneMenu(){
   document.body.classList.remove('menu-open');
   phoneMenu.setAttribute('aria-hidden', 'true');
   phoneOpen.setAttribute('aria-expanded', 'false');
+  // going back, the screen is cream until the wash has faded out — switching
+  // now would flash brown bars around a still-cream screen
+  clearTimeout(tintTimer);
+  tintTimer = setTimeout(setTint, menuDurMs());
 }
 
 phoneOpen.addEventListener('click', openPhoneMenu);
@@ -1626,6 +1657,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 layoutPhone();
+setTint();
 
 /* Deep links. #menu opens the phone menu frame; the desktop keys open their
    card. Each only fires for the layout that is actually showing. */
