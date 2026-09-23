@@ -1,1 +1,24 @@
 .DS_Store
+
+# Camera originals and archives — ~300MB, never published.
+# The web-sized derivatives the site actually loads live in
+# la-victoria_assets/hover-web/ and are committed.
+code.zip
+la-victoria_assets/DE COMER/
+la-victoria_assets/DE BEBER/
+la-victoria_assets/Slideshow options/
+la-victoria_assets/DSCF9590.JPG
+la-victoria_assets/slideshow-web/
+
+# Superseded by index.html (the combined responsive site). Kept locally
+# for reference; the desktop design lives on inside index.html unchanged.
+desktop-only.html
+mobile.html
+
+# The five mobile client options publish from a SEPARATE repo
+# (cemorse100/la-victoria-mobile), which flattens this folder to its root
+# and rewrites ../la-victoria_assets/ paths. Committing it here would
+# duplicate it with paths that do not resolve.
+# Leading slash: must not match la-victoria_assets/variations/, whose
+# swan.png and egg.png the phone layout does load.
+/variations/
