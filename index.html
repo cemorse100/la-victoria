@@ -577,11 +577,24 @@
      .phone is a size container. Inside it, .art defines one "design pixel"
      as --u and lays out a 393-wide artboard centred in the phone:
 
-         --uw = phone width  / 393     (design px if we scale to width)
-         --uh = phone height / 852     (design px if we scale to height)
-         --u  = min(--uw, --uh * 1.15) (whichever is tighter, with 15%
-                                        vertical slack so ordinary tall
-                                        phones scale on width alone)
+         --uw = phone width  / 393    (design px if we scale to width)
+         --uh = phone height / 852    (design px if we scale to height)
+         --u  = min(--uw, --uh * 1.5) (whichever is tighter, with vertical
+                                       slack so ordinary phones scale on
+                                       width alone)
+
+     THE SLACK FACTOR. The 852-tall artboard is a whole iPhone screen, but a
+     browser only gets what its chrome leaves — about 633pt of an iPhone 13
+     mini's 812. At the original 1.15 the height branch therefore won on
+     every real phone, rendering the 393-wide artboard at ~336pt inside a
+     375pt screen: ~20pt of dead margin on all four sides on top of the
+     design's own, which is not a margin the frame ever specified.
+
+     Width-driven needs ~1.28 on the 13 and 13 mini. The ceiling is 1.70:
+     above that the info card (top 14.437%, height 200.529u) grows into the
+     tagline (top 54.454%). 1.5 sits between the two, so ordinary phones get
+     the frame's margins exactly and anything unusually short — landscape, a
+     short desktop window — still scales down rather than colliding.
 
      - Anything with intrinsic proportions — type, cards, the egg and swan,
        gaps between letters — is sized in --u, so it never distorts.
@@ -617,7 +630,7 @@
   .art{
     --uw:calc(100cqw / 393);
     --uh:calc(100cqh / 852);
-    --u:min(var(--uw), calc(var(--uh) * 1.15));
+    --u:min(var(--uw), calc(var(--uh) * 1.5));
 
     position:relative;
     z-index:1;                     /* always above the photography beneath it */
