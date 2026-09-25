@@ -784,11 +784,17 @@
   /* 0.36 = the frame's 40% group over a 90% image */
   .card__swan{
     position:absolute;
-    left:calc(-40.1 * var(--u));
-    top:calc(57.97 * var(--u));
-    width:calc(164.264 * var(--u));
-    height:calc(164.264 * var(--u));
-    opacity:0.36;
+    /* The swan node is mirrored in the frame, so the x get_metadata reports
+       is its RIGHT edge: visual left = x - width = 132.907 - 182.458. */
+    left:calc(-50.097 * var(--u));
+    top:calc(36.776 * var(--u));
+    width:calc(182.458 * var(--u));
+    height:calc(182.458 * var(--u));
+    /* Estimated: get_design_context timed out on this node, and get_metadata
+       does not report opacity. Read off the frame render as roughly half the
+       old 0.36, and 0.18 keeps the old 40%-group-over-90%-image pattern at a
+       20% group. One number to change if it wants to be lighter or heavier. */
+    opacity:0.18;
     pointer-events:none;
   }
   .card__swan img{
@@ -801,8 +807,8 @@
 
   .card__lockup{
     position:absolute;
-    left:calc(31.04 * var(--u));
-    top:calc(14.74 * var(--u));
+    left:calc(31.311 * var(--u));
+    top:calc(10.454 * var(--u));
     width:calc(183.837 * var(--u));
     gap:calc(1.442 * var(--u));
     color:var(--ink);
@@ -811,33 +817,38 @@
   .card__lockup .lockup__eyebrow{ font-size:calc(9.738 * var(--u)); }
   .card__lockup .lockup__script{ font-size:calc(57.198 * var(--u)); }
 
+  /* Frame 2307:864. The block now runs nearly the full width of the card
+     (231.12 of 247) instead of being inset to 169.2, which is what lets the
+     larger type sit on one line each. */
   .card__details{
     position:absolute;
-    left:calc(70.27 * var(--u));
-    top:calc(102.06 * var(--u));
-    width:calc(169.2 * var(--u));
+    left:calc(8.607 * var(--u));
+    top:calc(89.125 * var(--u));
+    width:calc(231.121 * var(--u));
     display:flex;
     flex-direction:column;
     align-items:center;
-    gap:calc(4 * var(--u));
+    gap:calc(5.464 * var(--u));
     text-align:center;
     line-height:1.4;
     z-index:1;
   }
-  .card__hours{ width:calc(169.2 * var(--u)); }
+  .card__hours{ width:calc(231.121 * var(--u)); }
   .card__where{
-    width:calc(163 * var(--u));
+    width:calc(222.651 * var(--u));
     display:flex;
     flex-direction:column;
-    gap:calc(1.092 * var(--u));
+    gap:calc(1.491 * var(--u));
   }
+  /* 19 / 16 / 13.571 — the frame's text heights over the 1.4 line-height
+     (49 = 19x1.4 + 16x1.4 exactly), i.e. the old 14/12/10 scaled by 19/14. */
   .card__details .lead{
-    font-size:calc(14 * var(--u));
+    font-size:calc(19 * var(--u));
     font-weight:600;
     color:var(--ink);
   }
   .card__details .sub{
-    font-size:calc(12 * var(--u));
+    font-size:calc(16 * var(--u));
     font-weight:400;
     color:var(--muted);
   }
@@ -847,7 +858,7 @@
     text-underline-position:from-font;
   }
   .card__details .district{
-    font-size:calc(10 * var(--u));
+    font-size:calc(13.571 * var(--u));
     font-weight:400;
     color:var(--muted);
   }
