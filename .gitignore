@@ -22,3 +22,14 @@ mobile.html
 # Leading slash: must not match la-victoria_assets/variations/, whose
 # swan.png and egg.png the phone layout does load.
 /variations/
+
+# v2/index.html (alternate mobile home + the live egg menu, published at
+# /v2/) is the source of truth for this version. mobile-v2.html was the
+# standalone home-screen preview it was built from and merged into; v2.html
+# is the un-pathed root-level copy it was assembled in. Both superseded,
+# kept locally for reference.
+mobile-v2.html
+v2.html
+
+# Impeccable's local tool config/cache — not site content.
+.impeccable/

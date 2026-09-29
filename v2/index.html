@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- Safari and Chrome tint BOTH the status bar and the bottom toolbar from
+     theme-color, and will not paint page content under either. Left unset,
+     Safari samples the document background — which here is the dark brown
+     desktop letterbox matte — so these are stated explicitly to get the
+     browser's own neutral chrome instead, following the system light/dark
+     setting. Tuned to iOS Safari's toolbar greys. -->
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
+<title>La Victoria — Bar · Cafetería</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;1,500;1,600&family=Pinyon+Script&display=swap" rel="stylesheet">
+<!-- only the narrow layout shows this photo, so only fetch it there -->
+<style>
+  /* =====================================================================
+     La Victoria — one document, two designs.
+
+       > 720px   .site   the desktop page (cream, marquee strips, hover
+                         photo reveals, menu + contact cards)
+       <= 720px  .phone  mobile variation 2 (photo, cream info card,
+                         full-screen menu frame)
+
+     Whichever layout is inactive is display:none, and its images are held
+     in data-src so the browser never downloads the other design's assets.
+     Narrowing a desktop window past 720px swaps to the phone view, matted
+     on the dark backdrop exactly as the variation mockups previewed it.
+     ===================================================================== */
+
+  :root{
+    /* shared */
+    --cream:#f6f3e5;
+    --red:#ad1932;      /* wordmark + buttons */
+
+    /* desktop */
+    --red-deep:#8c0e1f; /* BAR / CAFETERÍA / hours / address */
+    --page-pad: clamp(20px, 5vw, 64px);
+
+    /* ----- swan pattern: ONE overlapping row, alternating 0°/180°.
+       rendered pattern used directly as a seamless tile (swan_pattern.png,
+       1338x404, one full repeat). ----- */
+    --swan-strip: clamp(80px, 9.98vw, 125px);    /* strip height (-5%) */
+
+    /* ----- egg pattern: ONE overlapping row, alternating 0°/180°.
+       box 138.671 x 173.375; advances 57.53 (0.4149) then 92.96 (0.6703). */
+    --egg-w: clamp(77px, 10vw, 120px);
+    /* The egg PNG's true aspect is 1.2503, but its art carries far more
+       transparent margin than the swan tile (≈25/20px vs 7/9px at a 200px
+       height), which made the bottom of the page look more padded than the top.
+       We shorten the egg BAND to this ratio and let object-fit:cover crop the
+       excess whitespace, so the egg (bottom) and swan (top) figures end up the
+       same distance from the screen edges. */
+    --egg-ratio: 0.965;                           /* cropped band height (h / w) */
+    --egg-h: calc(var(--egg-w) * var(--egg-ratio));
+
+    /* ----- button hover photo reveal -----
+       4 photos appear across 0.75s; each fades in over a quarter of that, so
+       the last one lands exactly on --reveal-span. The exit is independent:
+       all four fade out together over --reveal-out. */
+    --reveal-span: 0.75s;
+    --reveal-step: 0.1875s;  /* --reveal-span / 4 — enter fade + stagger */
+    --reveal-out:  0.375s;   /* exit fade, all four at once */
+
+    /* mobile (variation 2) */
+    --card-bg:#ece7d7;
+    --card-border:#efe8df;
+    --ink:#8e2a0b;        /* card headings + labels over photography */
+    --muted:#72625a;      /* card secondary copy */
+    --rule:#fbf4df;       /* hamburger rules */
+    --backdrop:#2d221e;   /* letterbox behind the phone on a desktop */
+
+    /* ----- phone menu open/close -----
+       One duration and one ease-in-out drive the whole sequence: the
+       lock-up morph, the link group rising, and the wash + egg fading up. */
+    --menu-dur:520ms;
+    --menu-ease:cubic-bezier(.65, 0, .35, 1);
+    /* How far below its resting place the link group starts. The topmost
+       link sits at 23.6% of the frame, so 80% puts the whole group — moved
+       rigidly, as one block — just off the bottom edge. */
+    --menu-rise:80dvh;
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    :root{ --menu-dur:1ms; }
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html,body{ height:100%; }
+
+  body{
+    font-family:'Montserrat', system-ui, -apple-system, sans-serif;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  @font-face{
+    font-family:'Kuenstler Script';
+    src:url('../la-victoria_assets/Kuenstler%20Script%20LT%20Std%202%20Bold.otf') format('opentype');
+    font-weight:normal;
+    font-style:normal;
+    font-display:swap;
+  }
+
+
+  /* =====================================================================
+     DESKTOP
+     ===================================================================== */
+
+  /* The page is one vertical auto-layout (matches the Figma frame): the two
+     scrolling strips are the first & last children, and space-between pins
+     them to the top and bottom while the content sits centred in between —
+     so the strips stay on screen at any viewport height. */
+  .site{
+    background:var(--cream);
+    color:var(--red-deep);
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;   /* strips pinned top & bottom, stack centred */
+    align-items:center;              /* content centered; strips are full-bleed */
+    padding:16px 0;                  /* the frame's 16px top/bottom padding */
+  }
+
+  /* ---------- Infinite marquee strips ----------
+     ONE row. Consecutive images alternate 0°/180° and overlap
+     horizontally via alternating negative margins, at the exact
+     advances from the Figma pattern frames -> one interlocking band. */
+  .strip{
+    width:100%;
+    position:relative;
+    overflow:hidden;
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+  }
+  .strip--swans{ height:var(--swan-strip); }
+  .strip--eggs{ height:var(--egg-h); opacity:.9; }
+
+  .strip__track{ display:flex; width:max-content; will-change:transform; }
+  .strip__track img{ display:block; flex:0 0 auto; pointer-events:none; user-select:none; }
+
+  /* swans: the exported pattern tile, repeated edge-to-edge (seamless) */
+  .strip--swans .strip__track img{ height:var(--swan-strip); width:auto; }
+
+  /* eggs (box 138.67): X = 0, 64.97, 142.77, 206.73 -> advance 0.4685 box
+     after each 0° egg, 0.5610 box after each 180° egg */
+  .strip--eggs .strip__track img{ width:var(--egg-w); height:var(--egg-h);
+                                  object-fit:cover; object-position:center; }
+  .strip--eggs .strip__track img:nth-child(odd){  margin-right:calc(var(--egg-w) * -0.531477); }
+  .strip--eggs .strip__track img:nth-child(even){ margin-right:calc(var(--egg-w) * -0.438955);
+                                                  transform:rotate(180deg); }
+
+  .track--rtl{ animation:scroll-rtl 60s linear infinite; }
+  .track--ltr{ animation:scroll-ltr 66s linear infinite; }
+
+  @keyframes scroll-rtl{
+    from{ transform:translateX(0); }
+    to{ transform:translateX(-50%); }
+  }
+  @keyframes scroll-ltr{
+    from{ transform:translateX(-50%); }
+    to{ transform:translateX(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .track--rtl,.track--ltr{ animation:none; }
+  }
+
+  /* ---------- Content blocks (siblings of the strips) ----------
+     Each block is full width with a centered, max-width inner column and its
+     own side padding, so the strips can stay full-bleed while text stays inset. */
+  .headline,
+  .info{
+    width:100%;
+    max-width:1280px;
+    margin-inline:auto;
+    padding-inline:var(--page-pad);
+    position:relative;
+    z-index:2;          /* text sits above the hover photos (.photos is z-index:1) */
+  }
+
+  /* The wordmark block and the address/buttons block travel as one group.
+     Wrapping them leaves the site's space-between with three children, so the
+     two remaining gaps — above and below this stack — are equal by
+     construction and the whole group lands on the vertical centre. */
+  .stack{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:clamp(24px, 9vh, 112px);   /* wordmark block -> address/buttons */
+  }
+  .headline{
+    display:flex;
+    flex-direction:column;
+    gap:clamp(4px,1vw,16px);   /* eyebrow → wordmark */
+  }
+
+  .eyebrow{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-weight:500;
+    letter-spacing:-0.02em;
+    color:var(--red-deep);
+  }
+  .eyebrow .bar{ font-size:clamp(15px,2.2vw,31px); }
+  .eyebrow .cafe{ font-size:clamp(18px,2.8vw,40px); letter-spacing:.04em; }
+
+  .wordmark{
+    font-family:'Kuenstler Script', 'Pinyon Script', cursive;
+    color:var(--red);
+    text-align:center;
+    line-height:.9;
+    font-size:clamp(56px, 20vw, 300px);
+    font-weight:400;
+    white-space:nowrap;
+    /* The stroke is always 1px and only its colour animates — animating the
+       width would shift the glyph metrics mid-transition. */
+    -webkit-text-stroke:1px transparent;
+    transition:color .45s ease, -webkit-text-stroke-color .45s ease;
+  }
+  /* while a photo reveal is running the wordmark drops to 20% and is drawn
+     as a hairline outline in the full-strength red */
+  body.is-previewing .wordmark{
+    color:rgba(173,25,50,.2);
+    -webkit-text-stroke-color:var(--red);
+    /* fades over exactly as long as the four photos take to finish */
+    transition-duration:var(--reveal-span);
+  }
+
+  .info{
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    align-items:center;
+    gap:clamp(16px,3vw,40px);
+    font-weight:500;
+    letter-spacing:-0.02em;
+    font-size:clamp(14px,1.7vw,24px);
+    line-height:1.5;
+    color:var(--red-deep);
+  }
+  .info .addr{
+    justify-self:center;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    gap:.3em;
+  }
+  .info .comer{ justify-self:start; }
+  .info .beber{ justify-self:end; }
+
+  /* CONTACTO — sits on its own line under the address, same type as the
+     address (font:inherit picks up .info), just underlined. */
+  .addr__contact{
+    display:block;
+    background:none;
+    border:0;
+    padding:0;
+    font:inherit;
+    color:inherit;
+    letter-spacing:inherit;
+    text-align:center;
+    text-decoration:underline;
+    text-underline-offset:.18em;
+    cursor:pointer;
+    transition:opacity .18s ease;
+  }
+  .addr__contact:hover{ opacity:.7; }
+  .addr__contact:focus-visible{ outline:2px solid var(--red); outline-offset:3px; }
+
+  /* DE COMER / DE BEBER — outlined pill buttons (Figma) */
+  .menu-link{
+    background:none;
+    border:2px solid var(--red);
+    border-radius:999px;
+    /* Vertical padding in em so it tracks the fluid font-size: with the 1.5
+       line-height inherited from .info, 0.29em puts the pill at 75% of its
+       former height at every width. Horizontal stays a clamp — JS overrides
+       the final width anyway (see sizePills). */
+    padding:0.29em clamp(25px,2.75vw,40px);
+    font:inherit;
+    font-style:italic;
+    color:var(--red);
+    cursor:pointer;
+    letter-spacing:-0.02em;
+    white-space:nowrap;
+    transition:background .18s ease, color .18s ease;
+  }
+  .menu-link:hover{ background:var(--red); color:var(--cream); }
+  .menu-link:focus-visible{ outline:2px solid var(--red); outline-offset:4px; }
+
+  /* ===============================================
+     BLOCK: photos (button hover reveal)
+     A fixed layer above the marquee strips and below the
+     text. Geometry is lifted from the Figma frame (1440 x
+     1024): x as a % of the 1280 content column, y and
+     height as a % of the viewport, every photo cropped 2:3.
+     =============================================== */
+  .photos{
+    position:fixed;
+    top:0;
+    bottom:0;
+    left:50%;
+    transform:translateX(-50%);
+    width:min(100%, 1280px);
+    z-index:1;                 /* over the strips (auto/0), under .headline/.info (2) */
+    pointer-events:none;
+  }
+  .photo{
+    position:absolute;
+    height:var(--h);
+    aspect-ratio:2 / 3;
+    object-fit:cover;
+    opacity:0;
+    /* leave state: no delay and its own duration, so all four fade out together */
+    transition:opacity var(--reveal-out) ease;
+  }
+  .photos[data-set="comer"] .photo--comer,
+  .photos[data-set="beber"] .photo--beber{ opacity:1; }
+
+  /* enter state: faster fade, plus an even stagger one --reveal-step apart, so
+     photo 4 finishes at exactly --reveal-span. Dropping [data-set] on mouseleave
+     reverts both, which is what makes the exit slower and simultaneous. */
+  .photos[data-set] .photo{ transition-duration:var(--reveal-step); }
+  .photos[data-set] .photo--d1{ transition-delay:var(--reveal-step); }
+  .photos[data-set] .photo--d2{ transition-delay:calc(var(--reveal-step) * 2); }
+  .photos[data-set] .photo--d3{ transition-delay:calc(var(--reveal-step) * 3); }
+
+  /* Geometry is per-photo and independent of reveal order — the order lives
+     entirely in the --d1/--d2/--d3 classes in the markup. */
+  /* DE COMER — reveal order is left → right */
+  .photo--9977{ --h:40.57%; left:20.72%; top:33.13%; }
+  .photo--9914{ --h:46.26%; left:31.79%; top:3.09%;  }
+  .photo--9843{ --h:40.77%; left:50.57%; top:40.57%; }
+  .photo--9767{ --h:46.26%; left:65.62%; top:9.55%;  }
+
+  /* DE BEBER — reveal order is right → left */
+  .photo--9735{ --h:40.42%; left:61.10%; top:32.92%; }
+  .photo--9600{ --h:46.26%; left:46.93%; top:3.09%;  }
+  .photo--9778{ --h:40.88%; left:34.28%; top:37.33%; }
+  .photo--9905{ --h:39.06%; left:19.40%; top:5.86%;  }
+
+  @media (prefers-reduced-motion: reduce){
+    .photos[data-set] .photo--d1,
+    .photos[data-set] .photo--d2,
+    .photos[data-set] .photo--d3{ transition-delay:0s; }
+    .photo,
+    .photos[data-set] .photo{ transition-duration:.2s; }
+  }
+
+  /* ---------- Menu overlay ---------- */
+  .overlay{
+    position:fixed;
+    inset:0;
+    z-index:100;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:clamp(16px,4vw,56px);
+    background:rgba(35,6,10,0);
+    visibility:hidden;
+    transition:background 1s cubic-bezier(.22,.61,.36,1),
+               visibility 0s linear 1s;
+  }
+  .overlay.open{
+    visibility:visible;
+    background:rgba(35,6,10,.72);
+    transition:background 1s cubic-bezier(.22,.61,.36,1),
+               visibility 0s;
+  }
+
+  .overlay__close{
+    position:fixed;
+    top:clamp(14px,2.5vw,28px);
+    right:clamp(14px,2.5vw,28px);
+    width:clamp(42px,5vw,54px);
+    height:clamp(42px,5vw,54px);
+    border-radius:50%;
+    border:1.5px solid rgba(173,25,50,.45);
+    background:rgba(173,25,50,.06);
+    color:var(--red);
+    font-size:clamp(20px,2.6vw,26px);
+    line-height:1;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    opacity:0;
+    transform:scale(.9);
+    pointer-events:none;
+    transition:opacity .45s ease .25s, transform .45s ease .25s, background .18s ease, border-color .18s ease;
+    z-index:101;
+  }
+  .overlay__close:hover{ background:rgba(173,25,50,.14); border-color:var(--red); }
+  .overlay__close:focus-visible{ outline:2px solid var(--red); outline-offset:3px; }
+  .overlay.open .overlay__close{ opacity:1; transform:scale(1); pointer-events:auto; }
+
+  /* menu card (the "image" that rises up) */
+  .menu-card{
+    position:relative;
+    display:flex;
+    width:min(560px, 100%);
+    max-height:100%;
+    overflow:hidden;                 /* card clips; inner element scrolls */
+    background:var(--cream);
+    color:var(--red);
+    border-radius:6px;
+    box-shadow:0 40px 90px -30px rgba(0,0,0,.6);
+    transform:translateY(120vh);
+    transition:transform 1s cubic-bezier(.22,.61,.36,1);
+  }
+  .overlay.open .menu-card{ transform:translateY(0); }
+
+  .menu-scroll{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    padding:clamp(28px,5vw,56px) clamp(22px,5vw,54px);
+    text-align:center;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;            /* hide native scrollbar (Firefox) */
+  }
+  .menu-scroll::-webkit-scrollbar{ display:none; } /* hide native (WebKit) */
+
+  /* minimal red scrollbar on the left — signals the menu is scrollable */
+  .menu-scrollbar{
+    position:absolute;
+    right:clamp(8px,1.5vw,15px);
+    top:clamp(20px,4vw,38px);
+    bottom:clamp(20px,4vw,38px);
+    width:1.5px;
+    background:rgba(173,25,50,.22);  /* hairline track (light red) */
+    border-radius:2px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .5s ease .35s;
+    z-index:2;
+  }
+  .overlay.open .menu-scrollbar{ opacity:1; }
+  .menu-scrollbar.is-hidden{ opacity:0; }         /* no overflow = no bar */
+
+  .menu-scrollbar__thumb{
+    position:absolute;
+    left:50%;
+    top:0;
+    width:5px;
+    min-height:34px;
+    border-radius:999px;
+    background:var(--red);
+    transform:translateX(-50%);
+  }
+
+  .menu-card__head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-family:'Montserrat';
+    font-weight:500;
+    letter-spacing:.08em;
+    color:var(--red-deep);
+    font-size:clamp(12px,2.6vw,15px);
+  }
+  .menu-card__wordmark{
+    font-family:'Kuenstler Script', 'Pinyon Script', cursive;
+    font-size:clamp(64px,15vw,104px);
+    line-height:.8;
+    color:var(--red);
+    margin:.05em 0 .35em;
+  }
+  .menu-card__title{
+    font-family:'Montserrat';
+    font-weight:600;
+    letter-spacing:.12em;
+    text-decoration:underline;
+    text-underline-offset:4px;
+    color:var(--red);
+    font-size:clamp(15px,3.4vw,20px);
+    margin-bottom:1.4em;
+  }
+  .menu-group{ margin-bottom:1.7em; }
+  .menu-group:last-child{ margin-bottom:0; }
+  .menu-group li{
+    list-style:none;
+    font-family:'Montserrat';
+    font-weight:500;
+    color:var(--red);
+    font-size:clamp(12.5px,3vw,16px);
+    line-height:1.5;
+    padding:.16em 0;
+    letter-spacing:.01em;
+  }
+  .menu-group li.extra{
+    font-weight:400;
+    text-transform:lowercase;
+    font-size:clamp(11px,2.6vw,14px);
+    opacity:.85;
+  }
+
+  /* ===============================================
+     BLOCK: contact window
+     Rides the same .overlay backdrop as the food/drink
+     cards (same darkening), but with its own compact card
+     that rises from below the fold into the centre.
+     =============================================== */
+  .contact-card{
+    position:relative;
+    width:min(430px, 100%);
+    max-height:100%;
+    overflow-y:auto;
+    background:var(--cream);
+    color:var(--red);
+    border-radius:6px;
+    box-shadow:0 40px 90px -30px rgba(0,0,0,.6);
+    padding:clamp(34px,5vw,52px) clamp(24px,5vw,44px) clamp(30px,4.5vw,44px);
+    text-align:center;
+    transform:translateY(120vh);      /* starts out of view, below the viewport */
+    transition:transform 1s cubic-bezier(.22,.61,.36,1);
+  }
+  .overlay.open .contact-card{ transform:translateY(0); }
+
+  .contact-card__close{
+    position:absolute;
+    top:clamp(10px,1.6vw,16px);
+    right:clamp(10px,1.6vw,16px);
+    width:clamp(32px,3.4vw,38px);
+    height:clamp(32px,3.4vw,38px);
+    border-radius:50%;
+    border:1.5px solid rgba(173,25,50,.45);
+    background:rgba(173,25,50,.06);
+    color:var(--red);
+    font-family:inherit;
+    font-size:clamp(18px,2.2vw,22px);
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:background .18s ease, border-color .18s ease;
+  }
+  .contact-card__close:hover{ background:rgba(173,25,50,.14); border-color:var(--red); }
+  .contact-card__close:focus-visible{ outline:2px solid var(--red); outline-offset:3px; }
+
+  /* the wordmark's own bottom margin + this keeps the breathing room the
+     removed CONTACTO. title used to provide */
+  .contact-card__lines{ display:flex; flex-direction:column; gap:.55em; margin-top:.7em; }
+  .contact-card__line{
+    font-weight:500;
+    letter-spacing:.04em;
+    font-size:clamp(13px,3.1vw,17px);
+    line-height:1.5;
+    color:var(--red);
+    word-break:break-word;
+  }
+  a.contact-card__line{
+    text-decoration:underline;
+    text-underline-offset:4px;
+    transition:opacity .18s ease;
+  }
+  a.contact-card__line:hover{ opacity:.65; }
+
+
+  /* =====================================================================
+     MOBILE — v2 (alternate home + the live egg menu)
+
+     HOME is the Figma 2312:963 design (see mobile-v2.html): swan/egg
+     marquees, a centred BAR/CAFETERÍA + script wordmark, tagline,
+     address/hours and a MENU pill. Built from a 402 x 874 Figma artboard.
+
+     MENU is variation 2's existing egg-background frame, reused verbatim —
+     same markup, same CSS, same egg/link/dismiss animation. Only the
+     lock-up morph (below) is retargeted from variation 2's cream bottom
+     lock-up onto this file's red, mid-screen one, and the colour side of
+     the morph is dropped since both ends are already red.
+
+     SCALING MODEL
+     -------------
+     Each screen is its own size domain: HOME defines --u from the 402x874
+     artboard, MENU keeps its original 393x852 --u untouched. .phone is the
+     shared `container-type:size` ancestor both read cqw/cqh against; the
+     two screens are absolutely positioned siblings at the same origin, so
+     the JS morph (see measureMorph) can compare their rendered geometry
+     directly via getBoundingClientRect regardless of the differing --u. */
+
+  /* ---------- Stage ---------- */
+
+  .phone{
+    position:relative;
+    width:min(100vw, 600px);       /* capped so a desktop preview stays phone-shaped */
+    height:100dvh;
+    margin-inline:auto;
+    overflow:hidden;
+    container-type:size;           /* cqw / cqh below resolve against this */
+    isolation:isolate;
+    font-weight:500;
+  }
+
+  .screen{
+    position:absolute;
+    inset:0;
+    overflow:hidden;
+  }
+
+  /* ---------- BAR · CAFETERÍA + wordmark ----------
+     Shared by the home lock-up and the menu lock-up: same structure, each
+     scaled to its own screen's --u. Kuenstler's font size is always
+     0.3111 × the block width, which is what makes the nowrap wordmark fill
+     the block exactly the way it does in Figma. */
+  .lockup{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+  }
+  .lockup__eyebrow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    width:100%;
+    line-height:normal;
+    white-space:nowrap;
+  }
+  .lockup__eyebrow .bar{ letter-spacing:-0.02em; }
+  .lockup__eyebrow .cafe{ letter-spacing:0.04em; }
+
+  .lockup__script{
+    font-family:'Kuenstler Script', 'Pinyon Script', cursive;
+    font-weight:400;
+    /* Figma sets the script to fill the block and left-aligns it, so the
+       "L" starts on the block's left edge and the final swash is free to
+       overhang the right. Shrink-wrapping it would right-align it instead. */
+    width:100%;
+    text-align:left;
+    white-space:nowrap;
+    /* Figma's text box is 0.891em tall but the font's natural line box is
+       1.2em. Keeping the natural box (so the swashes aren't clipped) and
+       trimming the 0.309em difference off the BOTTOM reproduces the frame
+       without lifting the script into the eyebrow above it. */
+    line-height:normal;
+    margin-bottom:-0.309em;
+  }
+
+  /* =====================================================================
+     HOME — Figma 2312:963
+     ===================================================================== */
+
+  .screen--home{ background:var(--cream); }
+
+  .stage{
+    --uw:calc(100cqw / 402);
+    --uh:calc(100cqh / 874);
+    --u:min(var(--uw), calc(var(--uh) * 1.15));
+    --egg-w:calc(136.52 * var(--u) / 0.965);
+
+    position:relative;
+    width:100%;
+    height:100%;
+    color:var(--red-deep);
+
+    display:grid;
+    /* pad | swans | gap | brand | gap | tagline | gap | info | gap | menu | gap | eggs | pad */
+    grid-template-rows:
+      calc(16 * var(--u))
+      calc(140.775 * var(--u))
+      51.406fr
+      auto
+      24.68fr
+      auto
+      85.235fr
+      auto
+      72.776fr
+      auto
+      72.775fr
+      calc(136.52 * var(--u))
+      calc(16 * var(--u));
+  }
+
+  /* ---------- Infinite marquee strips ----------
+     Same mechanics and assets as the desktop site's borders (see .strip
+     above): one row, consecutive images alternating 0°/180°, interlocked
+     with negative margins at the exact advances from the Figma pattern
+     frames. Namespaced .p-marquee* so it never shares sizing with the
+     desktop .strip* rules, even though both live in one stylesheet. */
+  .p-marquee{
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    transition:opacity var(--menu-dur) var(--menu-ease);
+  }
+  .p-marquee--swans{ grid-row:2; height:100%; }
+  .p-marquee--eggs{ grid-row:12; height:100%; opacity:.9; }
+  body.menu-open .p-marquee{ opacity:0; }
+
+  .p-marquee__track{ display:flex; width:max-content; will-change:transform; }
+  .p-marquee__track img{ display:block; flex:0 0 auto; pointer-events:none; user-select:none; }
+
+  .p-marquee--swans .p-marquee__track img{ height:100%; width:auto; }
+
+  .p-marquee--eggs .p-marquee__track img{ width:var(--egg-w); height:100%;
+                                          object-fit:cover; object-position:center; }
+  .p-marquee--eggs .p-marquee__track img:nth-child(odd){  margin-right:calc(var(--egg-w) * -0.531477); }
+  .p-marquee--eggs .p-marquee__track img:nth-child(even){ margin-right:calc(var(--egg-w) * -0.438955);
+                                                          transform:rotate(180deg); }
+
+  /* ---------- BAR · CAFETERÍA + wordmark ----------
+     This is the element the menu lock-up morphs from — see measureMorph.
+     Vanishes on the same frame the menu lock-up takes over (opening), and
+     stays hidden until it has finished travelling back down (closing), so
+     the two are never on screen together: one becomes the other. */
+  .brand{
+    grid-row:4;
+    width:calc(382.555 * var(--u));
+    margin-inline:auto;
+    gap:calc(3 * var(--u));
+    color:var(--red);
+    transition:opacity 0s linear var(--menu-dur);
+  }
+  body.menu-open .brand{ opacity:0; transition:opacity 0s; }
+  .brand .lockup__eyebrow{ font-size:calc(21.706 * var(--u)); }
+  .brand .lockup__script{ font-size:calc(119.025 * var(--u)); }
+
+  /* ---------- Tagline ---------- */
+
+  .tagline{
+    grid-row:6;
+    width:calc(217 * var(--u));
+    margin-inline:auto;
+    text-align:center;
+    font-size:calc(16 * var(--u));
+    letter-spacing:-0.02em;
+    line-height:1.2;
+  }
+
+  /* ---------- Address / hours ---------- */
+
+  .info{
+    grid-row:8;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:calc(11.819 * var(--u));
+    font-size:calc(20 * var(--u));
+    letter-spacing:-0.02em;
+    line-height:1.2;
+    text-align:center;
+  }
+
+  /* ---------- MENU pill ---------- */
+
+  .menu-pill{
+    grid-row:10;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:calc(272 * var(--u));
+    height:calc(43 * var(--u));
+    margin-inline:auto;
+    border-radius:999px;
+    background:var(--red);
+    border:calc(1 * var(--u)) solid var(--red);
+    color:var(--cream);
+    font:inherit;
+    font-style:italic;
+    font-weight:500;
+    font-size:calc(20 * var(--u));
+    letter-spacing:-0.02em;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    transition:background .15s ease, border-color .15s ease, transform .08s ease;
+  }
+  .menu-pill:active{
+    background:var(--red-deep);
+    border-color:var(--red-deep);
+    transform:scale(0.97);
+  }
+  .menu-pill:focus-visible{
+    outline:calc(2 * var(--u)) solid var(--red-deep);
+    outline-offset:calc(3 * var(--u));
+  }
+  body.menu-open .menu-pill{ pointer-events:none; }
+
+  /* =====================================================================
+     MENU — variation 2's egg frame, reused verbatim (Figma 2264:1695)
+     ===================================================================== */
+
+  .art{
+    --uw:calc(100cqw / 393);
+    --uh:calc(100cqh / 852);
+    --u:min(var(--uw), calc(var(--uh) * 1.5));
+
+    position:relative;
+    z-index:1;
+    width:calc(393 * var(--u));
+    height:100%;
+    margin-inline:auto;
+  }
+
+  /* The frame itself no longer fades as a unit — the lock-up inside it has to
+     stay fully opaque the whole way, because it IS the home lock-up. Only
+     visibility is toggled, held open for the length of the closing animation. */
+  .screen--menu{
+    background:transparent;
+    z-index:10;
+    visibility:hidden;
+    transition:visibility 0s linear var(--menu-dur);
+  }
+  body.menu-open .screen--menu{
+    visibility:visible;
+    transition:visibility 0s;
+  }
+
+  /* the cream wash, fading up under everything in the frame */
+  .screen--menu::before{
+    content:'';
+    position:absolute;
+    inset:0;
+    background:var(--cream);
+    opacity:0;
+    transition:opacity var(--menu-dur) var(--menu-ease);
+  }
+  body.menu-open .screen--menu::before{ opacity:1; }
+
+  /* The lock-up doubles as a close control — tapping the logo returns home,
+     as does the back button below, tapping empty background, or Escape.
+
+     It is also the animation's centrepiece. Its CLOSED state is defined as
+     "sitting exactly on top of the home lock-up, in cream" — the --morph-*
+     deltas are measured by JS (see measureMorph) — so opening is a plain
+     transition to its natural position and colour, and closing reverses for
+     free. The home lock-up blanks out on the same frame, so the two are
+     never on screen together: one becomes the other. */
+  .menu-close{
+    position:absolute;
+    left:calc(197.12 * var(--u));            /* 50% of 393 + 0.62 */
+    top:calc(2.169% + env(safe-area-inset-top, 0px));   /* 18.48 / 852 */
+    width:calc(330.638 * var(--u));
+    gap:calc(2.593 * var(--u));
+    background:none;
+    border:0;
+    padding:0;
+    font-family:inherit;
+    font-weight:500;
+    cursor:pointer;
+    z-index:3;
+
+    color:var(--red);                        /* constant — both ends of the morph are red */
+    transform-origin:50% 0;                  /* scale about the top centre */
+    transform:translateX(-50%)
+              translate(var(--morph-x, 0px), var(--morph-y, 0px))
+              scale(var(--morph-s, 1));
+    transition:transform var(--menu-dur) var(--menu-ease);
+  }
+  body.menu-open .menu-close{
+    transform:translateX(-50%);
+  }
+  /* 17.515 = 20 x 0.87574, matching this lock-up's width/script/gap ratio to
+     the home one. The frame specified 18.76, which left BAR/CAFETERÍA 7%
+     large against its block and made the menu eyebrow read bigger and more
+     tightly spaced than the home eyebrow. The home info card scales all four
+     values uniformly, so the frame's 18.76 was the odd one out. */
+  .menu-close .lockup__eyebrow{ font-size:calc(17.515 * var(--u)); }
+  .menu-close .lockup__script{ font-size:calc(102.872 * var(--u)); }
+
+  /* Dismiss — an explicit way out of the menu, in the top-right corner.
+     The frames don't draw one, so it borrows the home screen's rust red for
+     its ring and glyph over a tinted wash of the same colour.
+
+     Equal 16 inset from the top and right edges, so it reads as a corner
+     control. That puts it across the lock-up's BAR/CAFETERÍA line; the wash
+     is light enough that the type still reads underneath. */
+  .menu-dismiss{
+    position:absolute;
+    top:calc(16 * var(--u) + env(safe-area-inset-top, 0px));
+    right:calc(16 * var(--u));
+    z-index:4;
+
+    width:calc(44 * var(--u));
+    height:calc(44 * var(--u));
+    display:grid;
+    place-items:center;
+
+    padding:0;
+    border:max(1px, calc(2.4 * var(--u))) solid var(--ink);
+    border-radius:50%;
+    /* At 80% the fill covers the type behind it, which also means a rust X
+       would vanish into it — hence the cream glyph. */
+    background:rgba(142,42,11,0.8);
+    color:var(--cream);
+    cursor:pointer;
+    opacity:0;
+    transition:opacity var(--menu-dur) var(--menu-ease),
+               background 160ms ease, transform 160ms ease;
+  }
+  body.menu-open .menu-dismiss{ opacity:1; }
+  .menu-dismiss:hover{ background:rgba(142,42,11,0.95); }
+  .menu-dismiss:active{ transform:scale(0.9); }
+  .menu-dismiss svg{ width:46%; height:46%; }
+  .menu-dismiss::after{ content:''; position:absolute; inset:calc(-6 * var(--u)); }
+
+  /* Menu links.
+     These and the EN/ES switch share one rigid translate, so they enter as a
+     single block from below the bottom edge and hold their spacing on the way. */
+  .mlink{
+    position:absolute;
+    transform:translateX(-50%) translateY(var(--menu-rise));
+    z-index:3;
+
+    color:var(--red);
+    font-family:inherit;
+    font-weight:500;
+    line-height:normal;
+    letter-spacing:0.04em;
+    text-align:center;
+    text-decoration:underline;
+    text-decoration-thickness:from-font;
+    text-underline-position:from-font;
+
+    background:none;
+    border:0;
+    padding:0;
+    cursor:pointer;
+    transition:transform var(--menu-dur) var(--menu-ease), opacity 150ms ease;
+  }
+  .mlink:active{ opacity:0.55; }
+
+  .m-carta,
+  .m-contact,
+  .m-instagram{
+    left:calc(196.5 * var(--u));
+    font-size:calc(27.147 * var(--u));
+  }
+  .m-carta    { top:23.587%; width:calc(267.295 * var(--u)); }   /* 200.96 / 852 */
+  .m-contact  { top:27.930%; width:calc(258.64 * var(--u));  }   /* 237.96 / 852 */
+  .m-instagram{ top:32.272%; width:calc(267.295 * var(--u)); }   /* 274.96 / 852 */
+
+  /* EN / ES switch */
+  .lang{
+    position:absolute;
+    transform:translateX(-50%) translateY(var(--menu-rise));
+    z-index:3;
+    color:var(--red);
+    font-family:inherit;
+    font-weight:500;
+    font-size:calc(23.214 * var(--u));
+    line-height:normal;
+    letter-spacing:0.04em;
+    white-space:nowrap;
+    background:none;
+    border:0;
+    padding:0;
+    cursor:pointer;
+    text-decoration:none;
+    transition:transform var(--menu-dur) var(--menu-ease);
+  }
+  body.menu-open .mlink,
+  body.menu-open .lang{ transform:translateX(-50%); }
+  .lang.is-active{
+    text-decoration:underline;
+    text-decoration-thickness:from-font;
+    text-underline-position:from-font;
+  }
+  .lang--bottom{ bottom:calc(19 * var(--u) + env(safe-area-inset-bottom, 0px)); }
+  .lang--en{ left:calc(33.39 * var(--u)); }
+  .lang--es{ left:calc(362.11 * var(--u)); }
+
+  /* Decorative artwork sits under the type */
+  .decor{
+    position:absolute;
+    pointer-events:none;
+    user-select:none;
+    z-index:0;
+  }
+  .decor img{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+  .decor--egg{
+    left:calc(-138.32 * var(--u));
+    bottom:calc(-81.82 * var(--u));           /* 852 − 67.56 − 866.259 */
+    width:calc(692.865 * var(--u));
+    height:calc(866.259 * var(--u));
+    opacity:0;                                /* 0.3 is its resting value */
+    transition:opacity var(--menu-dur) var(--menu-ease);
+  }
+  body.menu-open .decor--egg{ opacity:0.3; }
+
+
+  /* =====================================================================
+     WHICH LAYOUT IS LIVE
+     Last in the sheet on purpose: `.site{display:flex}` above has the same
+     specificity as `.site{display:none}`, so the switch only wins if it
+     comes after it.
+     ===================================================================== */
+  @media (min-width:721px){
+    .phone{ display:none; }
+  }
+  @media (max-width:720px){
+    .site{ display:none; }
+    body{ background:var(--backdrop); overflow:hidden; }
+  }
+</style>
+</head>
+<body>
+
+<!-- =====================================================================
+     DESKTOP  (> 720px)
+     ===================================================================== -->
+<div class="site">
+
+  <!-- Hover photos, in reveal order so the --d1/--d2/--d3 stagger classes
+       read top-to-bottom. src is held in data-src so the narrow layout
+       never downloads them. -->
+  <div class="photos" id="photos" aria-hidden="true">
+    <!-- DE COMER, listed in reveal order: leftmost first -->
+    <img class="photo photo--comer photo--9977"            data-src="../la-victoria_assets/hover-web/DSCF9977.jpg" alt="" decoding="async">
+    <img class="photo photo--comer photo--9914 photo--d1"  data-src="../la-victoria_assets/hover-web/DSCF9914.jpg" alt="" decoding="async">
+    <img class="photo photo--comer photo--9843 photo--d2"  data-src="../la-victoria_assets/hover-web/DSCF9843.jpg" alt="" decoding="async">
+    <img class="photo photo--comer photo--9767 photo--d3"  data-src="../la-victoria_assets/hover-web/DSCF9767.jpg" alt="" decoding="async">
+
+    <!-- DE BEBER, listed in reveal order: rightmost first -->
+    <img class="photo photo--beber photo--9735"            data-src="../la-victoria_assets/hover-web/DSCF9735.jpg" alt="" decoding="async">
+    <img class="photo photo--beber photo--9600 photo--d1"  data-src="../la-victoria_assets/hover-web/DSCF9600.jpg" alt="" decoding="async">
+    <img class="photo photo--beber photo--9778 photo--d2"  data-src="../la-victoria_assets/hover-web/DSCF9778.jpg" alt="" decoding="async">
+    <img class="photo photo--beber photo--9905 photo--d3"  data-src="../la-victoria_assets/hover-web/DSCF9905.jpg" alt="" decoding="async">
+  </div>
+
+  <!-- Top swan border: infinite scroll right -> left -->
+  <div class="strip strip--swans" aria-hidden="true">
+    <div class="strip__track track--rtl"></div>
+  </div>
+
+  <!-- Headline + address/buttons: one group, centred between the strips -->
+  <div class="stack">
+
+    <!-- Headline: eyebrow + wordmark -->
+    <div class="headline">
+      <div class="eyebrow">
+        <span class="bar">BAR</span>
+        <span class="cafe">CAFETERÍA</span>
+      </div>
+
+      <h1 class="wordmark">La Victoria</h1>
+    </div>
+
+    <!-- Address + buttons: flanking row -->
+    <div class="info">
+      <button class="menu-link comer" data-menu="comer">DE COMER</button>
+      <div class="addr">
+        <span>MIERCOLES&nbsp;-&nbsp;DOMINGO&nbsp;9-17h</span>
+        <span>C/&nbsp;DELS&nbsp;METGES,&nbsp;12&nbsp;(EL&nbsp;BORN)</span>
+        <button type="button" class="addr__contact" id="contactoLink"
+                aria-haspopup="dialog">CONTACTO</button>
+      </div>
+      <button class="menu-link beber" data-menu="beber">DE BEBER</button>
+    </div>
+
+  </div><!-- /.stack -->
+
+  <!-- Bottom egg border: infinite scroll left -> right -->
+  <div class="strip strip--eggs" aria-hidden="true">
+    <div class="strip__track track--ltr"></div>
+  </div>
+
+  <!-- Menu overlay -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <button class="overlay__close" id="closeBtn" aria-label="Cerrar menú">&times;</button>
+    <div class="menu-card" id="menuCard">
+      <div class="menu-scrollbar" id="menuScrollbar" aria-hidden="true">
+        <span class="menu-scrollbar__thumb" id="menuThumb"></span>
+      </div>
+      <div class="menu-scroll" id="menuScroll"></div>
+    </div>
+  </div>
+
+  <!-- Contact window: same darkening backdrop as the menus, compact card -->
+  <div class="overlay" id="contactOverlay" role="dialog" aria-modal="true"
+       aria-label="Contacto" aria-hidden="true">
+    <div class="contact-card">
+      <button class="contact-card__close" id="contactClose" aria-label="Cerrar contacto">&times;</button>
+      <div class="menu-card__wordmark">La Victoria</div>
+      <div class="contact-card__lines">
+        <a class="contact-card__line" href="mailto:barcafelavictoria@gmail.com">barcafelavictoria@gmail.com</a>
+        <span class="contact-card__line">@la.victoria.cafe</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.site -->
+
+
+<!-- =====================================================================
+     MOBILE  (<= 720px) — v2 (alternate home + the live egg menu)
+     ===================================================================== -->
+<div class="phone">
+
+  <!-- ============================ HOME ============================ -->
+  <main class="screen screen--home">
+    <div class="stage">
+
+      <!-- Top swan border: infinite scroll right -> left -->
+      <div class="p-marquee p-marquee--swans" aria-hidden="true">
+        <div class="p-marquee__track track--rtl"></div>
+      </div>
+
+      <footer class="lockup brand">
+        <div class="lockup__eyebrow">
+          <span class="bar">BAR</span>
+          <span class="cafe">CAFETERÍA</span>
+        </div>
+        <p class="lockup__script">La Victoria</p>
+      </footer>
+
+      <p class="tagline">SIMPLE, HONEST COOKING</p>
+
+      <div class="info">
+        <p>MIERCOLES&nbsp;-&nbsp;DOMINGO&nbsp;9-17h</p>
+        <p>C/&nbsp;METGES,&nbsp;12&nbsp;(EL&nbsp;BORN)</p>
+      </div>
+
+      <button type="button" class="menu-pill" aria-controls="menu" aria-expanded="false">MENU</button>
+
+      <!-- Bottom egg border: infinite scroll left -> right -->
+      <div class="p-marquee p-marquee--eggs" aria-hidden="true">
+        <div class="p-marquee__track track--ltr"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ============================ MENU ============================ -->
+  <nav class="screen screen--menu" id="menu" aria-hidden="true" aria-label="Menú">
+    <div class="art">
+
+      <div class="decor decor--egg" aria-hidden="true">
+        <img data-src="../la-victoria_assets/variations/egg.png" alt="">
+      </div>
+
+      <button class="lockup menu-close" type="button" data-close aria-label="Cerrar menú">
+        <span class="lockup__eyebrow">
+          <span class="bar">BAR</span>
+          <span class="cafe">CAFETERÍA</span>
+        </span>
+        <span class="lockup__script">La Victoria</span>
+      </button>
+
+      <a class="mlink m-carta"     href="#">LA CARTA</a>
+      <a class="mlink m-contact"   href="#">CONTACT</a>
+      <a class="mlink m-instagram" href="#">INSTAGRAM</a>
+
+      <button class="lang lang--bottom lang--en is-active" type="button">EN</button>
+      <button class="lang lang--bottom lang--es" type="button">ES</button>
+
+      <button class="menu-dismiss" type="button" data-close aria-label="Cerrar menú">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+
+    </div>
+  </nav>
+
+</div><!-- /.phone -->
+
+<script>
+/* =====================================================================
+   Shared bootstrap
+
+   NARROW decides which half of the document is live. The desktop layout
+   measures itself (marquee tile counts, wordmark fit, pill widths), and
+   every one of those measurements returns 0 inside a display:none
+   subtree — fillRow would then divide by zero and loop forever — so all
+   of it is gated behind isWide().
+   ===================================================================== */
+const NARROW = window.matchMedia('(max-width: 720px)');
+function isWide(){ return !NARROW.matches; }
+
+/* Assets start in data-src and are only promoted to src by the layout
+   that actually shows them, so neither design pays for the other's
+   images (1.0MB of hover photos / 2.2MB of phone artwork). */
+function hydrate(root){
+  root.querySelectorAll('img[data-src]').forEach(img => {
+    img.src = img.dataset.src;
+    delete img.dataset.src;
+  });
+}
+
+const siteEl  = document.querySelector('.site');
+const phoneEl = document.querySelector('.phone');
+
+
+/* =====================================================================
+   DESKTOP
+   ===================================================================== */
+
+/* ---------- Build seamless marquee tracks ----------
+   Measure one item to learn the box width, add enough overlapping
+   items to cover the viewport (even count, so the 0°/180° + margin
+   alternation stays consistent across the loop seam), then duplicate
+   so translateX(-50%) is perfectly seamless. */
+function fillRow(track, src){
+  track.innerHTML = '<img src="' + src + '" alt="">';
+  const box = track.firstElementChild.getBoundingClientRect().width;
+  const minAdvance = box * 0.37;                 // smallest of the two overlaps
+  let need = Math.ceil((window.innerWidth + box * 4) / minAdvance) + 2;
+  if(need % 2) need++;                            // keep alternation phase across the seam
+  let html = '';
+  for(let i = 0; i < need; i++) html += '<img src="' + src + '" alt="">';
+  track.innerHTML = html + html;
+}
+
+/* Swans: a pre-rendered seamless pattern tile, repeated edge-to-edge
+   to cover the viewport, then duplicated for the translateX(-50%) loop. */
+function fillTileRow(track, src, aspect){
+  const stripH = track.closest('.strip').getBoundingClientRect().height;
+  const tileW = stripH * aspect;               // known from the tile's dimensions
+  const need = Math.ceil((window.innerWidth + tileW * 2) / tileW) + 1;
+  // Set explicit width/height inline so the track is correctly sized the moment
+  // it's built — before the large pattern PNG has loaded. With CSS width:auto,
+  // an unloaded image measures 0, so on a cold (uncached) visit the strip had no
+  // width: it neither scrolled nor filled the screen until a reload cached it.
+  const tile = '<img src="' + src + '" alt="" style="width:' + tileW + 'px;height:' + stripH + 'px">';
+  let html = '';
+  for(let i = 0; i < need; i++) html += tile;
+  track.innerHTML = html + html;
+}
+
+function buildStrips(){
+  fillTileRow(document.querySelector('.strip--swans .strip__track'), '../la-victoria_assets/swan_pattern.png', 1338/404);
+  fillRow(document.querySelector('.strip--eggs .strip__track'),  '../la-victoria_assets/egg.png');
+}
+
+/* Scale the script wordmark down to always fit its container (never upscale) */
+const wordmark = document.querySelector('.wordmark');
+function fitWordmark(){
+  wordmark.style.fontSize = '';                 // back to CSS clamp value
+  const parent = wordmark.parentElement;         // .headline (has side padding)
+  const cs = getComputedStyle(parent);
+  const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  const avail = (parent.clientWidth - padX) * 0.98;   // fit to the content box, not incl. padding
+  const range = document.createRange();          // true text bounds, ignores centering/overflow
+  range.selectNodeContents(wordmark);
+  const w = range.getBoundingClientRect().width;
+  if(w > avail){
+    const cur = parseFloat(getComputedStyle(wordmark).fontSize);
+    wordmark.style.fontSize = (cur * avail / w) + 'px';
+  }
+}
+
+/* ---------- DE COMER / DE BEBER: one shared width ----------
+   Both pills take the WIDER label's natural width x 1.25, so the two match
+   and the extra space reads as horizontal padding. Measured rather than
+   hardcoded: the font-size is a fluid clamp and Montserrat loads async, so
+   the labels have no fixed width. */
+const pills = document.querySelectorAll('.menu-link');
+function sizePills(){
+  pills.forEach(b => { b.style.width = ''; });          // back to natural width
+  let max = 0;
+  pills.forEach(b => { max = Math.max(max, b.getBoundingClientRect().width); });
+  pills.forEach(b => { b.style.width = (max * 1.25) + 'px'; });
+}
+
+/* Everything the desktop layout has to measure, in one gated entry point. */
+let siteReady = false;
+function layoutSite(){
+  if(!isWide()) return;
+  if(!siteReady){ hydrate(siteEl); siteReady = true; }
+  buildStrips();
+  fitWordmark();
+  sizePills();
+}
+layoutSite();
+
+if(document.fonts){
+  // The wordmark is sized to overflow and then scaled down to fit, so the fit
+  // must run against the real Kuenstler face. fonts.ready can resolve before the
+  // swap, so also re-fit when each face specifically finishes loading.
+  // The phone lock-ups are Kuenstler too, and the morph deltas depend on where
+  // the script line sits inside each block — so they must be re-measured once
+  // the real face is in, not against the fallback.
+  document.fonts.ready.then(() => { layoutSite(); layoutPhone(); });
+  document.fonts.load("400 1em 'Kuenstler Script'")
+    .then(() => { layoutSite(); layoutPhone(); }).catch(() => {});
+  document.fonts.load("500 1em 'Montserrat'").then(layoutSite).catch(() => {});
+}
+window.addEventListener('load', () => { layoutSite(); layoutPhone(); });
+
+let rz;
+window.addEventListener('resize', () => {
+  clearTimeout(rz);
+  rz = setTimeout(() => {
+    layoutSite();
+    layoutPhone();
+    if(isWide() && overlay.classList.contains('open')) updateScrollbar();
+  }, 200);
+});
+
+/* Crossing the breakpoint brings the other design on screen for the first
+   time: hydrate it, and let whichever side is now live take its
+   measurements, since neither can measure itself while display:none. */
+function onBreakpoint(){
+  if(NARROW.matches){
+    layoutPhone();
+    // a card left open on the desktop layout must not lock scrolling
+    closeMenu(); closeContact();
+  } else {
+    document.body.classList.remove('menu-open');
+    layoutSite();
+  }
+}
+NARROW.addEventListener('change', onBreakpoint);
+
+/* ---------- Menu data ---------- */
+const MENUS = {
+  comer: {
+    title: 'DE COMER',
+    groups: [
+      [ ['CROISSANT','2,80€'],
+        ['PAIN AU CHOCOLAT O BRIOX DE CHOCOLATE','3,50€'],
+        ['SCONES CON MERMELADA Y NATA','4,30€'],
+        ['DATILES RELLENOS CON MANTEQUILLA DE MANÍ & BAÑADOS EN CHOCLATE','3,00€'],
+        ['BUDÍN DE LIMON & AMAPOLAS CON NATA & ACEITE DE OLIVA','4,50€'],
+        ['COOKIES','3,50€'],
+        ['PANCAKES DE ARANDANOS CON FRUTA, YOGURT & MIEL','7,50€'],
+        ['YOGURT, FRUTA DE ESTACIÓN & GRANOLA','8,00€'] ],
+      [ ['BIKINI','5,50€'],
+        ['BRIOCHE DE HUEVO Y PANCETA','8,50€'],
+        ['EL CROISSANT DE LA VICTORIA CON HUEVOS, JAMON IBERICO & SALSA YOGURT','12,50€'] ],
+      [ ['HUEVO REVUELTO, QUESO MANCHEGO, VERDURA DE ESTACIÓN & PAN','11,00€'],
+        ['extra bacon 3,50€ / extra sardina 3,50€ / extra queso 2,50€ / extra avocado 2,50€', null, true],
+        ['HUEVO PASADO POR AGUA CON JAMON, QUESO MANTEQUILLA & PAN DE MASA MADRE','11,00€'],
+        ['extra bacon 3,50€ / extra sardina 3,50€ / extra queso 2,50€ / extra avocado 2,50€', null, true] ],
+      [ ['QUICHE DEL DIA CON ENSALADA','12,00€'],
+        ['WRAP DE POLLO & COLESLAW','9,00€'],
+        ['ESCALOPOE DE POLLO CON HUEVO & ENSALADA VERDE','15,00€'],
+        ['ENSALADA DE TOMATE CON AJO BLANCO','13,00€'] ],
+      [ ['OLIVAS','2,80€'],
+        ['PATATAS CHIPS CON HUEVAS DE TRUCHA','6,20€'],
+        ['GILDAS','3,20€'] ]
+    ]
+  },
+  beber: {
+    title: 'DE BEBER',
+    groups: [
+      [ ['ESPRESSO (DOUBLE SHOT)','2,30€'],
+        ['AMERICANO','2,50€'],
+        ['CORTADO','2,20€'],
+        ['CAFÉ CON LECHE','2,80€'],
+        ['FLAT WHITE','3,20€'],
+        ['CAFÉ DE FILTRO','3,00€'],
+        ['MATCHA LATTE','4,00€'],
+        ['CHAI LATTE','4,00€'],
+        ['BABYCCINO','1,20€'] ],
+      [ ['ICED LATTE','4,00€'],
+        ['ICED AMERICANO','2,90€'],
+        ['ICED MATCHA','4,50€'],
+        ['ICED CHAI','4,50€'] ],
+      [ ['AGUA','2,50€'],
+        ['VICHY','3,00€'],
+        ['SODA DE MANZANA','3,00€'],
+        ['ZUMO DE NARANJA','3,80€'] ],
+      [ ['CAÑITA','2,50€'],
+        ['COPA DE CERVEZA','3,50€'],
+        ['VINO ROSADO','3,80€'],
+        ['VERMUT','2,90€'],
+        ['APEROL SPRITZ','6,50€'],
+        ['ESPRESSO MARTINI','11,00€'],
+        ['GIN TONIC','11,00€'] ]
+    ]
+  }
+};
+
+const overlay      = document.getElementById('overlay');
+const menuScroll   = document.getElementById('menuScroll');
+const menuScrollbar= document.getElementById('menuScrollbar');
+const menuThumb    = document.getElementById('menuThumb');
+const closeBtn     = document.getElementById('closeBtn');
+let lastFocused = null;
+
+/* Size + position the custom thumb from the scroller's own metrics.
+   Hides the whole bar when there's nothing to scroll. */
+function updateScrollbar(){
+  const { scrollHeight, clientHeight, scrollTop } = menuScroll;
+  if(scrollHeight - clientHeight <= 1){
+    menuScrollbar.classList.add('is-hidden');
+    return;
+  }
+  menuScrollbar.classList.remove('is-hidden');
+  const trackH  = menuScrollbar.clientHeight;
+  const thumbH  = Math.max(34, trackH * clientHeight / scrollHeight);
+  const ratio   = scrollTop / (scrollHeight - clientHeight);
+  menuThumb.style.height = thumbH + 'px';
+  menuThumb.style.top    = (trackH - thumbH) * ratio + 'px';
+}
+menuScroll.addEventListener('scroll', updateScrollbar, { passive:true });
+
+function renderMenu(key){
+  const m = MENUS[key];
+  let html = `
+    <div class="menu-card__head"><span>BAR</span><span>CAFETERÍA</span></div>
+    <div class="menu-card__wordmark">La Victoria</div>
+    <div class="menu-card__title">${m.title}.</div>`;
+  for(const group of m.groups){
+    html += '<ul class="menu-group">';
+    for(const item of group){
+      const [name, price, extra] = item;
+      const text = price ? `${name} ${price}` : name;
+      html += `<li class="${extra ? 'extra' : ''}">${text}</li>`;
+    }
+    html += '</ul>';
+  }
+  menuScroll.innerHTML = html;
+  menuScroll.scrollTop = 0;
+}
+
+function openMenu(key){
+  lastFocused = document.activeElement;
+  renderMenu(key);
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden';
+  closeBtn.focus({ preventScroll:true });
+  // wait for layout (card at final size) before measuring the scrollbar
+  requestAnimationFrame(updateScrollbar);
+}
+
+function closeMenu(){
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
+  if(lastFocused) lastFocused.focus({ preventScroll:true });
+}
+
+document.querySelectorAll('.menu-link').forEach(btn => {
+  btn.addEventListener('click', () => openMenu(btn.dataset.menu));
+});
+
+/* ---------- Button hover photo reveal ----------
+   All the timing lives in CSS; this only flips [data-set] on the layer
+   (which group shows + turns the stagger on) and marks the body so the
+   wordmark drops back. Pointer devices only — there's no hover to leave
+   on touch, so the photos would stick. */
+const photos = document.getElementById('photos');
+function clearPreview(){
+  delete photos.dataset.set;
+  document.body.classList.remove('is-previewing');
+}
+if(window.matchMedia('(hover: hover) and (pointer: fine)').matches){
+  document.querySelectorAll('.menu-link').forEach(btn => {
+    btn.addEventListener('mouseenter', () => {
+      photos.dataset.set = btn.dataset.menu;
+      document.body.classList.add('is-previewing');
+    });
+    btn.addEventListener('mouseleave', clearPreview);
+  });
+  // a card opening over the page should not leave photos hanging behind it
+  document.addEventListener('click', clearPreview);
+}
+
+closeBtn.addEventListener('click', closeMenu);
+overlay.addEventListener('click', (e) => { if(e.target === overlay) closeMenu(); });
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && overlay.classList.contains('open')) closeMenu();
+});
+
+/* ---------- Contact window ----------
+   Same backdrop + rise timing as the menu cards, its own small card. */
+const contactOverlay = document.getElementById('contactOverlay');
+const contactLink    = document.getElementById('contactoLink');
+const contactClose   = document.getElementById('contactClose');
+let contactLastFocused = null;
+
+function openContact(){
+  contactLastFocused = document.activeElement;
+  contactOverlay.classList.add('open');
+  contactOverlay.setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden';
+  contactClose.focus({ preventScroll:true });
+}
+
+function closeContact(){
+  contactOverlay.classList.remove('open');
+  contactOverlay.setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
+  if(contactLastFocused) contactLastFocused.focus({ preventScroll:true });
+}
+
+contactLink.addEventListener('click', openContact);
+contactClose.addEventListener('click', closeContact);
+contactOverlay.addEventListener('click', (e) => {
+  if(e.target === contactOverlay) closeContact();
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && contactOverlay.classList.contains('open')) closeContact();
+});
+
+
+/* =====================================================================
+   MOBILE — home marquee + menu frame
+   ===================================================================== */
+
+/* ---------- Build the home screen's seamless marquee tracks ----------
+   Same tiling math as the desktop's fillTileRow/fillRow, but measured
+   against the strip's own box (not window.innerWidth), since .phone caps
+   out at 600px on a wide screen. */
+function fillPhoneTileRow(track, src, aspect){
+  const strip = track.closest('.p-marquee');
+  const stripH = strip.getBoundingClientRect().height;
+  const stripW = strip.getBoundingClientRect().width;
+  const tileW = stripH * aspect;
+  const need = Math.ceil((stripW + tileW * 2) / tileW) + 1;
+  const tile = '<img src="' + src + '" alt="" style="width:' + tileW + 'px;height:' + stripH + 'px">';
+  let html = '';
+  for(let i = 0; i < need; i++) html += tile;
+  track.innerHTML = html + html;
+}
+
+function fillPhoneRow(track, src){
+  track.innerHTML = '<img src="' + src + '" alt="">';
+  const box = track.firstElementChild.getBoundingClientRect().width;
+  const stripW = track.closest('.p-marquee').getBoundingClientRect().width;
+  const minAdvance = box * 0.37;
+  let need = Math.ceil((stripW + box * 4) / minAdvance) + 2;
+  if(need % 2) need++;
+  let html = '';
+  for(let i = 0; i < need; i++) html += '<img src="' + src + '" alt="">';
+  track.innerHTML = html + html;
+}
+
+function buildPhoneMarquee(){
+  fillPhoneTileRow(document.querySelector('.p-marquee--swans .p-marquee__track'), '../la-victoria_assets/swan_pattern.png', 1338/404);
+  fillPhoneRow(document.querySelector('.p-marquee--eggs .p-marquee__track'),  '../la-victoria_assets/egg.png');
+}
+
+const phoneMenu = document.querySelector('.screen--menu');
+const phoneOpen = document.querySelector('.menu-pill');
+const brand     = document.querySelector('.brand');      // home lock-up (red, mid-screen)
+const menuClose = document.querySelector('.menu-close');  // menu lock-up (red, top)
+
+/* ---------- The lock-up morph ----------
+   CSS holds the menu lock-up's CLOSED state at translate(--morph-x, --morph-y)
+   scale(--morph-s); these are the deltas that land it precisely on the home
+   lock-up, so opening reads as that one piece of type travelling up the
+   screen and shrinking into the menu header. Both ends are red, so — unlike
+   variation 2's cream-to-red version of this morph — colour never animates.
+
+   The two lock-ups no longer share a common ancestor box (home lays out on
+   a CSS grid, the menu keeps variation 2's absolutely-positioned .art), so
+   this reads real rendered geometry via getBoundingClientRect instead of
+   offsetLeft/Top. That includes whatever transform is currently applied,
+   which matters for menuClose: its own transform is exactly what we're
+   about to recompute, so it's reset to 'none' before reading, then restored.
+   home's lock-up never carries a transform, so its rect is read as-is.
+
+   menuClose additionally self-centers with `left:X%; transform:translateX(-50%)`,
+   a fixed horizontal offset of minus half its own (unscaled) width that
+   applies on top of the morph. home's lock-up centers with plain margins
+   instead, so it carries no such offset — the X delta below adds
+   naturalRect.width / 2 back in to cancel menuClose's self-centering out of
+   the comparison. (Variation 2's original version of this morph didn't need
+   that term: its home lock-up used the same translateX(-50%) idiom, so the
+   two self-centering offsets cancelled each other automatically.) */
+function measureMorph(){
+  const homeRect = brand.getBoundingClientRect();
+  if(!homeRect.width) return;                      // hidden = unmeasurable
+  const homeScriptTop = brand.querySelector('.lockup__script').getBoundingClientRect().top;
+
+  const prevTransition = menuClose.style.transition;
+  menuClose.style.transition = 'none';
+  menuClose.style.transform  = 'none';
+  const naturalRect = menuClose.getBoundingClientRect();
+  const naturalScriptTop = menuClose.querySelector('.lockup__script').getBoundingClientRect().top;
+  menuClose.style.transform  = '';                  // back to the custom-property-driven transform
+  void menuClose.offsetWidth;
+  menuClose.style.transition = prevTransition;
+  if(!naturalRect.width) return;
+
+  const s  = homeRect.width / naturalRect.width;
+  /* s * naturalRect.width == homeRect.width by definition of s, so the
+     cancelled term below is homeRect.width / 2, not naturalRect.width / 2. */
+  const mx = homeRect.left - naturalRect.left + homeRect.width / 2;
+  const my = homeScriptTop - (naturalRect.top + (naturalScriptTop - naturalRect.top) * s);
+
+  /* These feed `transform`, which is transitioned — so writing them would
+     otherwise ANIMATE the closed state into place over --menu-dur, and a tap
+     landing inside that window would start the morph from a half-updated
+     position. Suppress the transition, commit, restore. */
+  menuClose.style.transition = 'none';
+  phoneEl.style.setProperty('--morph-x', mx + 'px');
+  phoneEl.style.setProperty('--morph-y', my + 'px');
+  phoneEl.style.setProperty('--morph-s', s);
+  void menuClose.offsetWidth;
+  menuClose.style.transition = '';
+}
+
+let phoneReady = false;
+function layoutPhone(){
+  if(!NARROW.matches) return;
+  if(!phoneReady){ hydrate(phoneEl); phoneReady = true; }
+  buildPhoneMarquee();
+  measureMorph();
+}
+
+function openPhoneMenu(){
+  measureMorph();                    // --u may have changed since the last open
+  document.body.classList.add('menu-open');
+  phoneMenu.setAttribute('aria-hidden', 'false');
+  phoneOpen.setAttribute('aria-expanded', 'true');
+}
+function closePhoneMenu(){
+  document.body.classList.remove('menu-open');
+  phoneMenu.setAttribute('aria-hidden', 'true');
+  phoneOpen.setAttribute('aria-expanded', 'false');
+}
+
+phoneOpen.addEventListener('click', openPhoneMenu);
+
+// Any control marked data-close returns home; so does the empty
+// background, since the menu frames have no drawn close affordance.
+phoneMenu.addEventListener('click', (e) => {
+  if(e.target.closest('[data-close]') || e.target === phoneMenu ||
+     e.target.classList.contains('art')){
+    closePhoneMenu();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape') closePhoneMenu();
+});
+
+layoutPhone();
+
+/* Deep links. #menu opens the phone menu frame; the desktop keys open their
+   card. Each only fires for the layout that is actually showing. */
+const hash = location.hash.slice(1);
+if(NARROW.matches){
+  if(hash === 'menu') openPhoneMenu();
+} else if(MENUS[hash]){
+  openMenu(hash);
+} else if(hash === 'contacto'){
+  openContact();
+}
+</script>
+</body>
+</html>
